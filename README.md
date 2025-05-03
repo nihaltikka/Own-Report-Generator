@@ -27,7 +27,6 @@ Save hours on vulnerability documentation by generating polished PDF, Word, Exce
    git clone https://github.com/nihaltikka/vulnerability-report-generator.git
    cd vulnerability-report-generator
 2. Install dependencies:
-   ```bash
    pip install -r requirements.txt
 
    # Linux users: Install Tkinter separately:
@@ -39,27 +38,27 @@ Save hours on vulnerability documentation by generating polished PDF, Word, Exce
    python3 report_generator.py
 3. Workflow
 
-  Enter Report Name
-
-  Fill vulnerability details:
-  
-  Vulnerability Name (required)
-  
-  Description, Impact, Affected URL, etc.
-  
-  Select Severity from dropdown
-  
-  Click "➕ Add Vulnerability"
-  
-  Repeat for multiple findings
-  
-  Choose output format (PDF/Word/Excel/HTML)
-  
-  Click "🛠 Generate Report"
+        Enter Report Name
+      
+        Fill vulnerability details:
+        
+        Vulnerability Name (required)
+        
+        Description, Impact, Affected URL, etc.
+        
+        Select Severity from dropdown
+        
+        Click "➕ Add Vulnerability"
+        
+        Repeat for multiple findings
+        
+        Choose output format (PDF/Word/Excel/HTML)
+        
+        Click "🛠 Generate Report"
   
 3. Find outputs in the project directory with timestamps:
 
-ReportName_2023-10-25.pdf/docx/xlsx/html
+      ReportName_2023-10-25.pdf/docx/xlsx/html
 
 ### Technical Details 🔧
     Built With:
