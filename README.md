@@ -97,6 +97,9 @@ Found a bug? Want a feature?
 
 
 Disclaimer: This tool is for educational/authorized testing purposes only.
+
 Need Help? Open an issue or reach out via LinkedIn(https://www.linkedin.com/in/nihaltikka)
+
 Read me on: https://elcazad0r.medium.com/
+
 Portfolio : https://nihaltikka.github.io/
