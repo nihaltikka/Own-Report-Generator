@@ -1,1 +1,10 @@
-pip3 install python-docx pandas reportlab fpdf xlsxwriter
+# Core dependencies
+pandas>=1.5.3         # Data handling and Excel export
+python-docx>=0.8.11   # Word document generation
+reportlab>=4.0.0      # PDF generation
+fpdf2>=2.7.4          # Alternative PDF generation (FPDF)
+XlsxWriter>=3.0.8     # Excel formatting
+python-docx>=0.8.11   # Word document manipulation
+
+# GUI dependencies
+tk>=0.1.0             # Tkinter (usually included with Python)
