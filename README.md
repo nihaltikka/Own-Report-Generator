@@ -27,14 +27,17 @@ Save hours on vulnerability documentation by generating polished PDF, Word, Exce
    git clone https://github.com/nihaltikka/vulnerability-report-generator.git
    cd vulnerability-report-generator
 2. Install dependencies:
+   ```bash
    pip install -r requirements.txt
 
    # Linux users: Install Tkinter separately:
+     ```bash
      sudo apt-get install python3-tk
 ### Usage 🖥️
 1. Start the application:
+   ```bash
    python3 report_generator.py
-2. Workflow
+3. Workflow
 
   Enter Report Name
 
