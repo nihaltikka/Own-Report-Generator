@@ -6,7 +6,6 @@ Save hours on vulnerability documentation by generating polished PDF, Word, Exce
 [![Python Version](https://img.shields.io/badge/Python-3.8%2B-blue)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green)](https://opensource.org/licenses/MIT)
 
-![Demo Screenshot](.github/screenshot.png) <!-- Add a screenshot later -->
 
 ## Features ✨
 - **Multi-Format Export**: Generate reports in PDF, Word (DOCX), Excel (XLSX), and HTML
@@ -25,17 +24,18 @@ Save hours on vulnerability documentation by generating polished PDF, Word, Exce
 ### Steps
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/vulnerability-report-generator.git
+   git clone https://github.com/nihaltikka/vulnerability-report-generator.git
    cd vulnerability-report-generator
 2. Install dependencies:
    pip install -r requirements.txt
 
-   Linux users: Install Tkinter separately:
-   sudo apt-get install python3-tk
+   # Linux users: Install Tkinter separately:
+     sudo apt-get install python3-tk
 ### Usage 🖥️
 1. Start the application:
    python3 report_generator.py
 2. Workflow
+
   Enter Report Name
 
   Fill vulnerability details:
