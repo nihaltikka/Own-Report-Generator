@@ -8,8 +8,11 @@ from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from docx.enum.style import WD_STYLE_TYPE
 from reportlab.lib import colors
 from fpdf import FPDF
+import os
+from datetime import datetime
 import webbrowser
 
 # Professional Blue Theme
@@ -151,10 +154,10 @@ class ReportGeneratorApp:
                              state='readonly')
         formats.pack(side=tk.LEFT)
         
-        ttk.Button(control_frame, 
-                 text="🛠 Generate Report", 
-                 command=self.generate_report,
-                 style='Primary.TButton').pack(side=tk.RIGHT)
+        generate_btn = ttk.Button(control_frame, 
+                                text="🛠 Generate Report", 
+                                command=self.generate_report)  # This must match method name
+        generate_btn.pack(side=tk.RIGHT)
 
         # Configure grid weights
         self.main_frame.columnconfigure(0, weight=1)
@@ -171,7 +174,11 @@ class ReportGeneratorApp:
     def process_inputs(self):
         data = {}
         for field, entry in self.entries.items():
-            value = entry.get("1.0", tk.END).strip() if isinstance(entry, tk.Text) else entry.get()
+            # Get value with proper casing for severity
+            if field == "Severity":
+                value = entry.get().strip().title()  # Force title case
+            else:
+                value = entry.get("1.0", tk.END).strip() if isinstance(entry, tk.Text) else entry.get()
             data[field] = value if value else "N/A"
         return data
 
@@ -189,64 +196,87 @@ class ReportGeneratorApp:
                 entry.delete(0, tk.END)
 
     def generate_report(self):
-        if not self.vulnerabilities:
-            messagebox.showwarning("Input Error", "Add at least one vulnerability")
-            return
-            
-        report_meta = {
-            "name": self.report_name.get() or "Unnamed Report",  # Now correctly referenced
-            "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "author": "XploitiX"
-        }
-        
         try:
+            if not self.vulnerabilities:
+                messagebox.showwarning("Input Error", "Add at least one vulnerability")
+                return
+
+            report_meta = {
+                "name": self.report_name.get().strip() or "Unnamed_Report",
+                "date": datetime.now().strftime("%Y-%m-%d_%H-%M-%S"),
+                "author": "XploitiX"
+            }
+
             format_handlers = {
                 "pdf": self.generate_pdf,
                 "word": self.generate_word,
                 "excel": self.generate_excel,
                 "html": self.generate_html
             }
-            format_handlers[self.format_var.get().lower()](report_meta)
-            messagebox.showinfo("Success", f"Report '{report_meta['name']}' generated successfully!")
-        except Exception as e:
-            messagebox.showerror("Error", f"Generation failed: {str(e)}")
 
-    def generate_pdf(self, meta):
-        filename = f"{meta['name'].replace(' ', '_')}.pdf"
-        doc = SimpleDocTemplate(filename, pagesize=letter,
-                              leftMargin=40, rightMargin=40,
-                              topMargin=40, bottomMargin=30)
-        styles = self.get_pdf_styles()
-        story = []
-        
-        # Header
-        story.append(Paragraph(meta['name'], styles['Title']))
-        story.append(Spacer(1, 10))
-        story.append(Paragraph(f"<font color={COLORS['footer']}>Generated: {meta['date']}</font>", styles['Normal']))
-        story.append(Spacer(1, 20))
-        
-        # Content
-        for vuln in self.vulnerabilities:
-            story.append(self.create_vulnerability_section(vuln, styles))
-            story.append(Spacer(1, 15))
-        
-        # Footer
-        story.append(Spacer(1, 20))
-        story.append(Paragraph(f"<font color={COLORS['footer']}>Report Prepared by {meta['author']}</font>", 
-                            styles['Footer']))
-        
-        doc.build(story)
-        webbrowser.open(filename)
+            format_selected = self.format_var.get().lower()
+            if format_selected not in format_handlers:
+                messagebox.showerror("Error", "Invalid output format selected")
+                return
 
-    def get_pdf_styles(self):
+            try:
+                filename = format_handlers[format_selected](report_meta)
+                if filename and os.path.exists(filename):
+                    messagebox.showinfo(
+                        "Success", 
+                        f"Report generated successfully!\n"
+                        f"Location: {os.path.abspath(filename)}"
+                    )
+                else:
+                    messagebox.showerror("Error", "Failed to generate report file")
+                    
+            except Exception as e:
+                messagebox.showerror("Generation Error", f"Failed to create report: {str(e)}")
+
+        except Exception as main_error:
+            messagebox.showerror("System Error", f"Application error: {str(main_error)}")
+    def get_pdf_styles(self):  # Correct spelling
         styles = getSampleStyleSheet()
         styles['Title'].textColor = colors.HexColor(COLORS['primary'])
         styles['Heading1'].textColor = colors.HexColor(COLORS['text'])
         styles['Heading2'].textColor = colors.HexColor(COLORS['secondary'])
         styles['Normal'].textColor = colors.HexColor(COLORS['text'])
-        styles.add(ParagraphStyle(name='Footer', parent=styles['Normal'],
-                                fontSize=10, textColor=colors.HexColor(COLORS['footer'])))
+        styles.add(ParagraphStyle(
+            name='Footer',
+            parent=styles['Normal'],
+            fontSize=10,
+            textColor=colors.HexColor(COLORS['footer'])
+        ))
         return styles
+
+    def generate_pdf(self, meta):
+        try:
+            filename = f"{meta['name']}_{meta['date']}.pdf"
+            doc = SimpleDocTemplate(filename, pagesize=letter)
+            styles = self.get_pdf_styles()
+            story = []
+            
+            # Header
+            story.append(Paragraph(meta['name'], styles['Title']))
+            story.append(Spacer(1, 10))
+            story.append(Paragraph(f"<font color={COLORS['footer']}>Generated: {meta['date']}</font>", styles['Normal']))
+            story.append(Spacer(1, 20))
+            
+            # Content
+            for vuln in self.vulnerabilities:
+                story += self.create_vulnerability_section(vuln, styles)
+                story.append(Spacer(1, 15))
+            
+            # Footer
+            story.append(Spacer(1, 20))
+            story.append(Paragraph(f"<font color={COLORS['footer']}>Report Prepared by {meta['author']}</font>", 
+                                styles['Footer']))
+            
+            doc.build(story)
+            return os.path.abspath(filename)
+        except Exception as e:
+            messagebox.showerror("PDF Error", f"PDF generation failed: {str(e)}")
+            raise
 
     def create_vulnerability_section(self, vuln, styles):
         section = []
@@ -264,245 +294,173 @@ class ReportGeneratorApp:
         return section
 
     def generate_word(self, meta):
-        doc = Document()
-        self.set_word_styles(doc)
-        
-        # Main title
-        title = doc.add_paragraph(meta['name'])
-        title.style = doc.styles['Title']
-        title.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
-        
-        # Date
-        date_para = doc.add_paragraph(f"Generated: {meta['date']}")
-        date_para.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
-        date_para.style = doc.styles['Subtle Emphasis']
-        
-        # Vulnerability content
-        for vuln in self.vulnerabilities:
-            # Vulnerability name
-            doc.add_heading(vuln['Vulnerability Name'], level=1)
+        try:
+            filename = f"{meta['name'].replace(' ', '_')}_{meta['date']}.docx"
+            doc = Document()
             
-            # Vulnerability details
-            for key, value in vuln.items():
-                if key == "Vulnerability Name":
-                    continue
+            # Create custom styles
+            self.create_word_styles(doc)
+            
+            # Main title (paragraph style)
+            title = doc.add_paragraph(meta['name'], style='Title')
+            title.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+            
+            # Date (paragraph style)
+            date_para = doc.add_paragraph(f"Generated: {meta['date']}", style='Subtitle')
+            date_para.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+            
+            # Vulnerability content
+            for vuln in self.vulnerabilities:
+                doc.add_heading(vuln['Vulnerability Name'], level=1)
                 
-                doc.add_heading(key, level=2)
-                para = doc.add_paragraph(value)
-                
-                # Add color to severity
-                if key == "Severity":
-                    run = para.runs[0]
-                    run.font.color.rgb = self.word_severity_color(value)
-        
-        # Footer
-        footer = doc.sections[0].footer
-        footer_para = footer.paragraphs[0]
-        footer_para.text = f"Report Prepared by {meta['author']}"
-        footer_para.style = doc.styles['Footer']
-        
-        filename = f"{meta['name'].replace(' ', '_')}.docx"
-        doc.save(filename)
-        webbrowser.open(filename)
+                for key, value in vuln.items():
+                    if key == "Vulnerability Name":
+                        continue
+                    
+                    # Add heading (paragraph style)
+                    doc.add_heading(key, level=2)
+                    
+                    # Add content with potential character styling
+                    para = doc.add_paragraph()
+                    run = para.add_run(value)
+                    
+                    # Apply character style only to severity
+                    if key == "Severity":
+                        run.font.color.rgb = self.word_severity_color(value)
+                        run.bold = True
 
-    def word_severity_color(self, severity):
-        color_map = {
-            'Critical': COLORS['error'],
-            'High': COLORS['error'],
-            'Medium': COLORS['warning'],
-            'Low': COLORS['success']
-        }
-        return RGBColor.from_string(color_map.get(severity, COLORS['text'])[1:])
+            # Footer (paragraph style)
+            footer = doc.sections[0].footer
+            footer_para = footer.add_paragraph(f"Report Prepared by {meta['author']}")
+            footer_para.style = doc.styles['Footer']
+            
+            doc.save(filename)
+            return os.path.abspath(filename)
+        except Exception as e:
+            messagebox.showerror("Word Error", f"Word generation failed: {str(e)}")
+            raise
 
-    def set_word_styles(self, doc):
+    def create_word_styles(self, doc):
         styles = doc.styles
         
-        # Header style
-        style = styles['Header']
-        style.font.color.rgb = RGBColor.from_string(COLORS['primary'][1:])
-        style.font.size = Pt(14)
+        # Create proper paragraph styles
+        if 'Footer' not in styles:
+            footer_style = styles.add_style('Footer', WD_STYLE_TYPE.PARAGRAPH)
+            footer_style.font.color.rgb = RGBColor.from_string(COLORS['footer'][1:])
+            footer_style.font.size = Pt(10)
+            footer_style.paragraph_format.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
         
-        # Footer style
-        style = styles['Footer']
-        style.font.color.rgb = RGBColor.from_string(COLORS['footer'][1:])
-        style.font.size = Pt(10)
-        
-        # Title style
-        style = styles['Title']
-        style.font.color.rgb = RGBColor.from_string(COLORS['primary'][1:])
-        style.font.size = Pt(18)
-        
-        # Subtle text style
-        style = styles['Subtle Emphasis']
-        style.font.color.rgb = RGBColor.from_string(COLORS['footer'][1:])
+        # Modify existing title style
+        title_style = styles['Title']
+        title_style.font.color.rgb = RGBColor.from_string(COLORS['primary'][1:])
+        title_style.font.size = Pt(18)
+        title_style.paragraph_format.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
 
     def generate_excel(self, meta):
-        filename = f"{meta['name'].replace(' ', '_')}.xlsx"
-        df = pd.DataFrame(self.vulnerabilities)
-        
-        with pd.ExcelWriter(filename, engine='xlsxwriter') as writer:
-            df.to_excel(writer, index=False, sheet_name='Vulnerabilities')
-            workbook = writer.book
-            worksheet = writer.sheets['Vulnerabilities']
+        try:
+            filename = f"{meta['name'].replace(' ', '_')}_{meta['date']}.xlsx"
+            df = pd.DataFrame(self.vulnerabilities)
             
-            # Formatting
-            header_format = workbook.add_format({
-                'bold': True,
-                'bg_color': COLORS['background'],
-                'font_color': COLORS['foreground'],
-                'border': 1
-            })
-            
-            severity_format = workbook.add_format({
-                'font_color': COLORS['foreground'],
-                'bg_color': COLORS['background']
-            })
-            
-            for col_num, value in enumerate(df.columns.values):
-                worksheet.write(0, col_num, value, header_format)
-            
-            # Apply severity colors
-            severity_col = df.columns.get_loc("Severity")
-            for row_num, severity in enumerate(df['Severity'], 1):
-                fmt = workbook.add_format({
-                    'font_color': self.get_severity_color(severity, excel=True)[1],
-                    'bold': True
+            with pd.ExcelWriter(filename, engine='xlsxwriter') as writer:
+                df.to_excel(writer, index=False, sheet_name='Vulnerabilities')
+                workbook = writer.book
+                worksheet = writer.sheets['Vulnerabilities']
+                
+                header_format = workbook.add_format({
+                    'bold': True,
+                    'bg_color': COLORS['primary'],
+                    'font_color': '#FFFFFF',
+                    'border': 1
                 })
-                worksheet.write(row_num, severity_col, severity, fmt)
+                
+                for col_num, value in enumerate(df.columns.values):
+                    worksheet.write(0, col_num, value, header_format)
+                
+                severity_col = df.columns.get_loc("Severity")
+                for row_num, severity in enumerate(df['Severity'], 1):
+                    fmt = workbook.add_format({
+                        'font_color': self.get_severity_color(severity, excel=True)[1:],
+                        'bold': True
+                    })
+                    worksheet.write(row_num, severity_col, severity, fmt)
+                
+                worksheet.write(len(df)+2, 0, f"Report Prepared by {meta['author']}", 
+                              workbook.add_format({'font_color': COLORS['footer']}))
+                
+                worksheet.set_column('A:H', 25)
             
-            # Footer
-            worksheet.write(len(df)+2, 0, f"Report Prepared by {meta['author']}", 
-                          workbook.add_format({'font_color': COLORS['footer']}))
-            
-            # Adjust columns
-            worksheet.set_column('A:H', 25)
-        
-        webbrowser.open(filename)
+            return os.path.abspath(filename)
+        except Exception as e:
+            messagebox.showerror("Excel Error", f"Excel generation failed: {str(e)}")
+            raise
 
     def generate_html(self, meta):
-        filename = f"{meta['name'].replace(' ', '_')}.html"
-        html_content = f"""<!DOCTYPE html>
-        <html>
-        <head>
-            <title>{meta['name']}</title>
-            <style>
-                body {{ 
-                    background-color: {COLORS['background']}; 
-                    color: {COLORS['text']};
-                    font-family: 'Segoe UI', sans-serif;
-                    line-height: 1.6;
-                    margin: 2em;
-                }}
-                .header {{ 
-                    text-align: center;
-                    border-bottom: 2px solid {COLORS['primary']};
-                    padding-bottom: 1em;
-                    margin-bottom: 2em;
-                }}
-                .vuln {{
-                    background: #FFFFFF;
-                    padding: 1.5em;
-                    border-radius: 8px;
-                    margin-bottom: 2em;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                }}
-                h1 {{ color: {COLORS['primary']}; }}
-                h2 {{ color: {COLORS['text']}; }}
-                h3 {{ color: {COLORS['secondary']}; }}
-                .footer {{
-                    text-align: center;
-                    color: {COLORS['footer']};
-                    margin-top: 3em;
-                    padding-top: 1em;
-                    border-top: 1px solid {COLORS['footer']};
-                }}
-            </style>
-        </head>
-        <body>
-            <div class="header">
-                <h1>{meta['name']}</h1>
-                <p>Generated: {meta['date']}</p>
-            </div>"""
-        
-        for vuln in self.vulnerabilities:
-            html_content += f'<div class="vuln"><h2>{vuln["Vulnerability Name"]}</h2>'
-            for key, value in vuln.items():
-                if key == "Vulnerability Name":
-                    continue
-                color_style = f'style="color: {self.get_severity_color(value)};"' if key == "Severity" else ""
-                html_content += f'<h3>{key}</h3><p {color_style}>{value}</p>'
-            html_content += "</div>"
-        
-        html_content += f'<div class="footer">Report Prepared by {meta["author"]}</div></body></html>'
-        
-        with open(filename, 'w') as f:
-            f.write(html_content)
-        webbrowser.open(filename)
+            try:
+                filename = f"{meta['name'].replace(' ', '_')}_{meta['date']}.html"
+                html_content = f"""<!DOCTYPE html>
+    <html>
+    <head>
+        <title>{meta['name']}</title>
+        <style>
+            body {{ 
+                background-color: {COLORS['background']}; 
+                color: {COLORS['text']};
+                font-family: 'Segoe UI', sans-serif;
+                line-height: 1.6;
+                margin: 2em;
+            }}
+            .header {{ 
+                text-align: center;
+                border-bottom: 2px solid {COLORS['primary']};
+                padding-bottom: 1em;
+                margin-bottom: 2em;
+            }}
+            .vuln {{
+                background: #FFFFFF;
+                padding: 1.5em;
+                border-radius: 8px;
+                margin-bottom: 2em;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }}
+            h1 {{ color: {COLORS['primary']}; }}
+            h2 {{ color: {COLORS['text']}; }}
+            h3 {{ color: {COLORS['secondary']}; }}
+            .footer {{
+                text-align: center;
+                color: {COLORS['footer']};
+                margin-top: 3em;
+                padding-top: 1em;
+                border-top: 1px solid {COLORS['footer']};
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h1>{meta['name']}</h1>
+            <p>Generated: {meta['date']}</p>
+        </div>"""
 
-    def generate_excel(self, meta):
-        filename = f"{meta['name'].replace(' ', '_')}.xlsx"
-        df = pd.DataFrame(self.vulnerabilities)
-        
-        with pd.ExcelWriter(filename, engine='xlsxwriter') as writer:
-            df.to_excel(writer, index=False, sheet_name='Vulnerabilities')
-            workbook = writer.book
-            worksheet = writer.sheets['Vulnerabilities']
-            
-            # Formatting
-            header_format = workbook.add_format({
-                'bold': True,
-                'bg_color': COLORS['primary'],
-                'font_color': '#FFFFFF',
-                'border': 1
-            })
-            
-            for col_num, value in enumerate(df.columns.values):
-                worksheet.write(0, col_num, value, header_format)
-            
-            # Apply severity colors
-            severity_col = df.columns.get_loc("Severity")
-            for row_num, severity in enumerate(df['Severity'], 1):
-                fmt = workbook.add_format({
-                    'font_color': self.get_severity_color(severity, excel=True)[1:],
-                    'bold': True
-                })
-                worksheet.write(row_num, severity_col, severity, fmt)
-            
-            # Footer
-            worksheet.write(len(df)+2, 0, f"Report Prepared by {meta['author']}", 
-                          workbook.add_format({'font_color': COLORS['footer']}))
-            
-            # Adjust columns
-            worksheet.set_column('A:H', 25)
-        
-        webbrowser.open(filename)
+                # Add vulnerabilities
+                for vuln in self.vulnerabilities:
+                    html_content += f'<div class="vuln"><h2>{vuln["Vulnerability Name"]}</h2>'
+                    for key, value in vuln.items():
+                        if key == "Vulnerability Name":
+                            continue
+                        color_style = f'style="color: {self.get_severity_color(value)};"' if key == "Severity" else ""
+                        html_content += f'<h3>{key}</h3><p {color_style}>{value}</p>'
+                    html_content += "</div>"
 
-    def generate_pdf(self, meta):
-        filename = f"{meta['name'].replace(' ', '_')}.pdf"
-        doc = SimpleDocTemplate(filename, pagesize=letter,
-                              leftMargin=40, rightMargin=40,
-                              topMargin=40, bottomMargin=30)
-        styles = self.get_pdf_styles()
-        story = []
-        
-        # Header
-        story.append(Paragraph(meta['name'], styles['Title']))
-        story.append(Spacer(1, 10))
-        story.append(Paragraph(f"<font color={COLORS['footer']}>Generated: {meta['date']}</font>", styles['Normal']))
-        story.append(Spacer(1, 20))
-        
-        # Content
-        for vuln in self.vulnerabilities:
-            story += self.create_vulnerability_section(vuln, styles)
-            story.append(Spacer(1, 15))
-        
-        # Footer
-        story.append(Spacer(1, 20))
-        story.append(Paragraph(f"<font color={COLORS['footer']}>Report Prepared by {meta['author']}</font>", 
-                            styles['Footer']))
-        
-        doc.build(story)
-        webbrowser.open(filename)
+                # Add footer
+                html_content += f'<div class="footer">Report Prepared by {meta["author"]}</div>'
+                html_content += "</body></html>"
+
+                with open(filename, 'w') as f:
+                    f.write(html_content)
+                    
+                return os.path.abspath(filename)
+            except Exception as e:
+                messagebox.showerror("HTML Error", f"HTML generation failed: {str(e)}")
+                raise
 
     def get_severity_color(self, severity, excel=False):
         color_map = {
@@ -514,13 +472,15 @@ class ReportGeneratorApp:
         return color_map.get(severity, COLORS['text'])
 
     def word_severity_color(self, severity):
+        # Convert to title case for consistency
+        severity = severity.title()
         color_map = {
-            'Critical': COLORS['critical'],
-            'High': COLORS['high'],
-            'Medium': COLORS['medium'],
-            'Low': COLORS['low']
+            'Critical': COLORS['error'],
+            'High': COLORS['error'],
+            'Medium': COLORS['warning'],
+            'Low': COLORS['success']
         }
-        return RGBColor.from_string(color_map.get(severity, COLORS['foreground'])[1:])
+        return RGBColor.from_string(color_map.get(severity, COLORS['text'])[1:])
 
 if __name__ == "__main__":
     root = tk.Tk()
