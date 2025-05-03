@@ -76,10 +76,10 @@ Save hours on vulnerability documentation by generating polished PDF, Word, Exce
 ### Project Structure:
 
   .
-├── report_generator.py    # Main application
-├── requirements.txt       # Dependencies
-├── sample_reports/        # Example outputs
-└── README.md              # This file
+      ├── report_generator.py    # Main application
+      ├── requirements.txt       # Dependencies
+      ├── sample_reports/        # Example outputs
+      └── README.md              # This file
 
 ### Contributing 🤝
 
