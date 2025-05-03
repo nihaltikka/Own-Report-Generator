@@ -27,9 +27,9 @@ Save hours on vulnerability documentation by generating polished PDF, Word, Exce
    git clone https://github.com/nihaltikka/vulnerability-report-generator.git
    cd vulnerability-report-generator
 2. Install dependencies:
-   pip install -r requirements.txt
+   pip3 install -r requirements.txt
 
-   # Linux users: Install Tkinter separately:
+   Linux users: Install Tkinter separately:
      ```bash
      sudo apt-get install python3-tk
 ### Usage 🖥️
